@@ -1,0 +1,9 @@
+{
+    "path" : "/srv/shiny-server/GEOdude",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}

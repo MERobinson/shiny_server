@@ -1,0 +1,105 @@
+# Venn diagram and heatmap plotting learning
+library(metaMA)
+library(GEOquery)
+options(ststringsAsFactors = F)
+
+# Get the datasets
+## I just add the [[1]] here to take only the first list component after downloading the data
+## getGEO returns a list with 1 element per platform - but usually datasets will only have
+## one platform, so you can just take the first list element here, then you don't need to bother
+## with the [[1]] for the rest of the script.
+data.pank <- getGEO('GSE69528')[[1]]
+data.wu <- getGEO('GSE46955')[[1]]
+
+# show the data distribution
+par(mfrow=c(1,2))
+boxplot(data.frame(exprs(data.pank)), main="Data.Pank", outline=F)
+boxplot(data.frame(exprs(data.wu)), main="Data.Wu", outline=F)
+
+# set groups
+## if you just want to look at the summary information about the ExpressionSet you don't need 
+## the head(data) - can just use data directly as shown below
+data.pank
+data.wu
+## if you want to look at the phenotype data you need to use pData() and head() -
+## just so you don't print the entire huge dataframe.
+## note - most of the pheno data returned by GEO is usually unhelpful
+head(pData(data.pank))
+head(pData(data.wu))
+## also you don't always need to use pData() to access pheno columns -
+## can just use e.g. data$group like below - makes it a bit simpler to see whats going on
+data.wu$group <- NA 
+data.wu$group[grep("monocyte-healthy-basal", data.wu$title)] <- 0  
+data.wu$group[grep("monocyte-sepsis-basal", data.wu$title)] <- 1
+data.wu <- data.wu[, !is.na(data.wu$group)]
+data.pank$group <- NA
+data.pank$group[grep("Uninfected", data.pank$source_name_ch1)] <- 0
+data.pank$group[grep("patients with sepsis", data.pank$source_name_ch1)] <- 1
+data.pank <- data.pank[, !is.na(data.pank$group)]
+
+# set classes
+c1 <- data.wu$group
+c2 <- data.pank$group
+classes=list(c1, c2)
+
+# Convert esets to Unigene format
+require("org.Hs.eg.db")
+x <- org.Hs.egUNIGENE
+mapped_genes <- mappedkeys(x)
+link <- as.list(x[mapped_genes])
+
+# functions for construction of the map probe->unigene
+probe2unigene<-function(expset) {           
+  probes = rownames(exprs(expset))
+  gene_id = fData(expset)[probes, "Entrez_Gene_ID"] ## this was where the error was
+  unigene = link[gene_id]
+  names(unigene) <- probes
+  probe_unigene = unigene
+}
+unigene2probe<-function(map) {
+ suppressWarnings(x <- cbind(unlist(map), names(map)))
+ unigene_probe = split(x[,2], x[,1])
+}
+convert2metaMA <- function(listStudies, mergemeth = mean) {
+  if (!(class(listStudies) %in% c("list"))) {
+    stop("listStudies must be a list")
+  }
+  conv_unigene = lapply(listStudies, function(x) unigene2probe(probe2unigene(x)))
+  id = lapply(conv_unigene, names)
+  inter = Reduce(intersect, id)
+  if(length(inter) <= 0){ stop("no common genes") }
+  print(paste(length(inter), "genes in common"))
+  esets = lapply(1:length(listStudies), function(i) {
+    l = lapply(conv_unigene[[i]][inter], function(x) {
+      exprs(listStudies[[i]])[x,,drop=TRUE]
+    })
+    esetsgr = t(sapply(l, function(ll) {
+      if (is.null(dim(ll))) { ll }
+      else { apply(ll,2,mergemeth) }
+    }))
+    esetsgr
+  })
+  return(list(esets=esets,conv.unigene=conv_unigene))
+}
+
+# perform linking
+## just to explain the error here - it calls the convert2metaMA function,
+## which then calls probe2unigene - which was trying to access a column from
+## the featureData called ENTREZ_GENE_ID - however if you look at what
+## feature information is attached to these datasets with e.g. fData(data.wu)
+## you can see this column has been renamed to Entrez_Gene_ID at some point
+conv = convert2metaMA(list(data.wu, data.pank))
+esets = conv$esets
+conv_unigene = conv$conv.unigene
+
+# run metaMA 
+res = pvalcombination(esets = esets,
+                      classes = classes)
+length(res$Meta)
+Hs.Meta = rownames(esets[[1]])[res$Meta]
+res.ES = EScombination(esets = esets,
+                       classes = classes,
+                       moderated = "limma",
+                       BHth = 0.05)
+length(res.ES$Meta)
+Hs.Meta.ES = rownames(esets[[1]])[res.ES$Meta]
