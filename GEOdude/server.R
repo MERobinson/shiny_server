@@ -40,6 +40,7 @@ read_gmt <- function(gmt_file) {
   return(gene_set)
 }
 
+# function to convert a set list into a T2G for clusterProfiler input
 term_to_gene <- function(gene_set_list) {
   term2genes <- data.frame(term = c(rep(names(gene_set_list), lengths(gene_set_list))),
                            gene = unlist(gene_set_list))
@@ -61,6 +62,8 @@ gm_ratios <- function(exprs, idx_A, idx_B) {
   })
 }
 
+
+############## server ############### 
 shinyServer(function(input, output) {
   
   # get GSE data
