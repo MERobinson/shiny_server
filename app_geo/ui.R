@@ -12,9 +12,10 @@ shinyUI(fluidPage(
   
   theme = "bootstrap.flatly.css",
 
-  # titlePanel(div(img(src='geodude.jpg',
-  #                    style=c("width:110px","height:110px")),
-  #                "GEOdude")),
+  titlePanel(tags$h3(tags$a(
+    imageOutput("icon", height = "100px", width = "100px", inline = TRUE),
+    href="http://10.197.211.94:3838"), 
+    "GEOdude")),
 
   sidebarLayout(
     sidebarPanel(

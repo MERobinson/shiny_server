@@ -10,7 +10,7 @@ library(org.Hs.eg.db)
 library(plotly)
 
 # load msigdb gene sets
-rdata_files <- list.files(path = "~/Resources/Gene_sets", pattern = "*.rdata",
+rdata_files <- list.files(path = "/poolio/resources/genesets", pattern = "*.rdata",
                           recursive = T, full.names = T)
 lapply(rdata_files, load, .GlobalEnv)
 
@@ -65,6 +65,11 @@ gm_ratios <- function(exprs, idx_A, idx_B) {
 
 ############## server ############### 
 shinyServer(function(input, output) {
+  
+  # icon
+  output$icon <- renderImage(list(src = "www/geodude.jpg",
+                                  height = "100px", width = "100px"), 
+                             deleteFile = F)
   
   # get GSE data
   get_gse_data <- reactive({
@@ -379,8 +384,8 @@ shinyServer(function(input, output) {
       return()
     } else {
       col_name <- "group"
-      ggplot(data = pca_data, 
-             aes_string(x = input$pc1, y = input$pc2, col = col_name)) +
+      ggplot(data = pca_data, aes_string(x = input$pc1, y = input$pc2, 
+                                         col = col_name)) +
         geom_point() +
         theme_bw(base_size = 18) +
         theme(legend.position = "bottom", 
@@ -389,12 +394,6 @@ shinyServer(function(input, output) {
         xlab(input$pc1) + ylab(input$pc2)
     }
   })
-  
-  # # hover info PCA
-  # output$pca_hover <- renderPrint({
-  #   d <- event_data("plotly_hover")
-  #   if (is.null(d)) "Hover on a point!" else d
-  # })
   
   # input ui for choosing contrast levels for GSEA
   output$choose_numer <- renderUI({
@@ -502,7 +501,12 @@ shinyServer(function(input, output) {
       numer_idx <- which(cond_levels$cond_levels == input$numer)
       denom_idx <- which(cond_levels$cond_levels == input$denom)
       exprs_mat <- exprs(gpl_data)
-      rownames(exprs_mat) <- fData(gpl_data)$"Entrez_Gene_ID"
+      entrezids <- mapIds(org.Hs.eg.db,
+                          keys = fData(gpl_data)[,'GENE SYMBOL'],
+                          keytype = "SYMBOL",
+                          column = "ENTREZID")
+      rownames(exprs_mat) <- entrezids
+      print(head(exprs_mat))
       gm_values <- gm_ratios(exprs_mat, numer_idx, denom_idx)
       gm_values <- gm_values[order(-gm_values)]
       gsea_res <- GSEA(gm_values, TERM2GENE = gene_sets,
@@ -513,16 +517,13 @@ shinyServer(function(input, output) {
   
   # plot PCA
   output$gsea_plot <- renderPlot({
-    print("mooooooo")
     gsea_res <- gsea_test()
-    print("booooooo")
     if (is.null(gsea_res)) {
       return()
     } else {
       if (is.null(chosen_gene_set)) {
         chosen_gene_set <- gsea_res$ID[1]
       }
-      print("gooooooo")
       gseaplot(gsea_res, geneSetID = chosen_gene_set)
     }
   })
