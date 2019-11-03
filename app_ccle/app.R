@@ -153,6 +153,12 @@ server <- function(input, output) {
   
   # samples table
   output$sample_info_dt <- DT::renderDT(
+    server = F,
+    # DT::datatable(as.data.frame(colData(ccledat$mae)),
+    #               editable = "cell", escape = F, rownames = F,
+    #               extensions = 'Buttons', options = list(dom = 'Bfrtip',
+    #                 buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+    #               ))
     DT::datatable(as.data.frame(colData(ccledat$mae)),
                   editable = "cell", escape = F, rownames = F)
   )
