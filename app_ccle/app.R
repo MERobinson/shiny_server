@@ -9,20 +9,19 @@ library(officer)
 library(rvg)
 library(colourpicker)
 library(randomcoloR)
+library(shinycssloaders)
 options(stringsAsFactors = F)
 
 # load CCLE data
 ccledat <- readRDS("/poolio/public_data/CCLE/CCLE_MAE_processed.2019-10-27.rds")
 
 # just make a summary table for the assay info
-# assay_info <- data.frame("Assay Type" = names(ccledat$mae),
-#                          "Sample #" = sapply(names(ccledat$mae), function(x) {
-#                            ncol(assay(ccledat$mae[,,x])) }),
-#                          "Feature #" = sapply(names(ccledat$mae), function(x) {
-#                            nrow(assay(ccledat$mae[,,x])) }),
-#                          check.names = F)
-# saveRDS(assay_info, "assay_info.rds")
-assay_info <- readRDS("assay_info.rds")
+assay_info <- data.frame("Assay Type" = names(ccledat$mae),
+                         "Sample #" = sapply(names(ccledat$mae), function(x) {
+                           ncol(assay(ccledat$mae[,,x])) }),
+                         "Feature #" = sapply(names(ccledat$mae), function(x) {
+                           nrow(assay(ccledat$mae[,,x])) }),
+                         check.names = F)
 
 # organise tsne dim data
 tsne_dims <- lapply(names(ccledat$dimred), function(x)  {
@@ -42,7 +41,8 @@ gen_pptx <- function(plot, file) {
 
 ############### ui ############### 
 ui <- fluidPage(
-    
+  
+  title = "CCLE", 
   theme = "bootstrap.flatly.css",
 
   titlePanel(tags$h3(tags$a(
@@ -52,64 +52,37 @@ ui <- fluidPage(
   
   tabsetPanel(
     tabPanel("Sample Info",
-             plotOutput("pheno_tsne_plot"),
+             plotOutput("pheno_tsne_plot") %>% withSpinner(color="#0dc5c1"),
              br(),
              DT::DTOutput('sample_info_dt')),
     tabPanel("Assay Info",
+             checkboxGroupButtons("plot_type", "Plot Element:", 
+                                  choices = list("Violin" = "violin",
+                                                 "Boxplot" = "boxplot",
+                                                 "Dotplot" = "dotplot"),
+                                  justified = T, 
+                                  size = 'xs', width = '25%',
+                                  status = "success", 
+                                  selected = "violin"),
+             plotOutput("feature_levels_plot") %>% withSpinner(color="#0dc5c1"),
+             div(style="display:inline-block",
+                 downloadButton("dl_feature_levels_plot_ppt", label = "PPT"),
+                 downloadButton("dl_feature_levels_plot_png", label = "PNG")),
+             br(), br(),
+             br(), br(),
              DT::DTOutput('assay_info_dt'),
              br(), br(),
              DT::DTOutput('feature_info_dt'),
              br(), br(),
-             plotOutput("violin_plot")),
-    # tabPanel("Tissue-level",
-    #          sidebarLayout(
-    #            sidebarPanel(
-    #              
-    #            ),
-    #            mainPanel(
-    #              plotOutput("tissue_level_plot"),
-    #              div(style="display:inline-block", 
-    #                  downloadButton("dl_tissue_level_ppt", label = "Download PPT")),
-    #              div(style="display:inline-block", 
-    #                  downloadButton("dl_tissue_level_png", label = "Download PNG")),
-    #              br(),
-    #              DT::DTOutput('tisse_level_dt')
-    #            )
-    #          )
-    #         ),
+             DT::DTOutput('feature_levels_dt')),
     tabPanel("tSNE",
-             # sidebarLayout(
-             #   # sidebarPanel(
-             #   #   selectInput("assay_type", "Choose Assay:",
-             #   #               c("RPPA","RNAseq","Metabolites","Chromatin"),
-             #   #               selected = "Protein", multiple = FALSE,
-             #   #               selectize = TRUE, width = NULL, size = NULL)#,
-             #   #   # div(style="display:inline-block", textInput("target_id", "Target Name",
-             #   #   #                                             value = "beta-Catenin")),
-             #   #   # div(style="display:inline-block", actionButton("go_button", "GO")),
-             #   #   # htmlOutput("gene_check"),
-             #   #   # br(),
-             #   #   # div(style="display:inline-block",
-             #   #   #     colourInput("col_expr_low","Low expr", value = "#3498dbff",
-             #   #   #                 allowTransparent = TRUE)),
-             #   #   # div(style="display:inline-block",
-             #   #   #     colourInput("col_expr_high","High expr", value = "#C23C3C",
-             #   #   #                 allowTransparent = TRUE)) ),
-             #   # ),
                mainPanel(width = "100%",
-                 plotOutput("expr_tsne_plot"),
-                 # div(style="display:inline-block",
-                 #     downloadButton("dl_sample_level_ppt", label = "Download PPT")),
+                 plotOutput("expr_tsne_plot") %>% withSpinner(color="#0dc5c1"),
                  br(),
                  div(style="display:inline-block",
-                     downloadButton("dl_expr_tsne_png", label = "Download PNG")),
-                 # br(),
-                 # DT::DTOutput('per_sample_expr_dt')
-             )
-          # )
-    )
+                     downloadButton("dl_expr_tsne_png", label = "Download PNG"))))
   )
-)
+) 
 
 ############### server ############### 
 server <- function(input, output) {
@@ -119,10 +92,39 @@ server <- function(input, output) {
                                   height = "50px", width = "50px"), 
                              deleteFile = F)
   
+  # samples table
+  output$sample_info_dt <- DT::renderDT(
+    DT::datatable(as.data.frame(colData(ccledat$mae)),
+                  escape = F, rownames = F,
+                  editable = "cell",
+                  extensions = 'Buttons',
+                  options = list(dom = 'Bfrtip',
+                                 buttons = list('pageLength',
+                                                list(extend = 'copy',
+                                                     title = NULL),
+                                                list(extend = 'print',
+                                                     title = "CCLE Sample Info"),
+                                                list(extend = 'csv',
+                                                     filename = paste0("CCLE_sample_info.", Sys.Date()),
+                                                     title = NULL),
+                                                list(extend = 'excel',
+                                                     filename = paste0("CCLE_sample_info.", Sys.Date()),
+                                                     title = NULL),
+                                                list(extend = 'pdf',
+                                                     filename = paste0("CCLE_sample_info.", Sys.Date()),
+                                                     title = "CCLE Sample Info")),
+                                 pagelength = 10,
+                                 lengthMenu = list(c(10, 25, 100, -1),
+                                                   c('10', '25', '100','All'))))
+  )
+  
   # assay summary table
   output$assay_info_dt <- DT::renderDT(
-    DT::datatable(assay_info, editable = "cell", escape = F, rownames = F,
-                  selection = "single")
+    DT::datatable(assay_info, 
+                  escape = F, 
+                  rownames = F,
+                  selection = list(mode = "single", selected = 2),
+                  options = list(dom = 't'))
   )
   
   # get assay type
@@ -137,7 +139,13 @@ server <- function(input, output) {
       return()
     } else {
       DT::datatable(ccledat$fdat[[assay_type]], rownames = F,
-                    selection = "single")
+                    selection = list(mode = "single", selected = 1),
+                    extensions = 'Buttons',
+                    options = list(dom = 'Bfrtip',
+                                   buttons = list('pageLength'),
+                                   pagelength = 5,
+                                   lengthMenu = list(c(5, 10, 20),
+                                                     c('5', '10', '20'))))
     }
   })
   
@@ -151,42 +159,142 @@ server <- function(input, output) {
     }
   })
   
-  # samples table
-  output$sample_info_dt <- DT::renderDT(
-    server = F,
-    # DT::datatable(as.data.frame(colData(ccledat$mae)),
-    #               editable = "cell", escape = F, rownames = F,
-    #               extensions = 'Buttons', options = list(dom = 'Bfrtip',
-    #                 buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
-    #               ))
-    DT::datatable(as.data.frame(colData(ccledat$mae)),
-                  editable = "cell", escape = F, rownames = F)
-  )
+  # format feature name
+  format_feature <- reactive({
+    assay_type <- get_assay_type()
+    feature <- get_feature()
+    if (is_empty(feature)) {
+      return()
+    }
+    if (assay_type == "RNAseq") {
+      feature <- ccledat$fdat[[assay_type]][feature, "Gene_Symbol"]
+    }
+    feature <- gsub(" |/|\\(|\\)", "_", feature)
+    gsub("_{2,}", "_", feature)
+  })
   
-  # plot simple violin plot
-  output$violin_plot <- renderPlot({
+  # get levels for selected feature
+  get_feature_levels <- reactive({
     assay_type <- get_assay_type()
     feature <- get_feature()
     if (is_empty(assay_type) | is_empty(feature)) {
       return()
     }
-    plotdat <- tsne_dims
-    plotdat$expr <- scale(as.numeric(assay(ccledat$mae[feature,ccledat$cc,assay_type])))[,1]
+    levelsdat <- tsne_dims[tsne_dims$assay_type == assay_type, c("V1", "V2", "Name", "Group")]
+    colnames(levelsdat) <- c("Dim1","Dim2","Sample Name","Group")
+    levelsdat[,"Feature Level"] <- as.numeric(assay(ccledat$mae[feature, ccledat$cc, assay_type]))
+    levelsdat[,"Z-Score"] <- scale(levelsdat$'Feature Level')[,1]
+    return(levelsdat)
+  })
+  
+  # render table of feature levels
+  output$feature_levels_dt <- DT::renderDT({
+    assay_type <- get_assay_type()
+    fname <- format_feature()
+    levelsdat <- get_feature_levels()
+    if (is_empty(levelsdat)) {
+      return()
+    } else {
+      levelsdat[,c(1:2,5:6)] <- apply(levelsdat[,c(1:2,5:6)], 2, function(x) round(x, 3))
+      tmptitle <- paste(c("CCLE", assay_type, fname, "levels"), collapse = " ")
+      tmpfilepre <- paste(c("CCLE", assay_type, fname, "levels"), collapse = "_")
+      tmpfilepre <- paste0(tmpfilepre, ".", Sys.Date())
+      DT::datatable(levelsdat, 
+                    rownames = F,
+                    selection = "none",
+                    extensions = 'Buttons',
+                    options = list(dom = 'Bfrtip',
+                                   buttons = list('pageLength',
+                                                  list(extend = 'csv',
+                                                       filename = tmpfilepre,
+                                                       title = NULL),
+                                                  list(extend = 'excel',
+                                                       filename = tmpfilepre,
+                                                       title = NULL)),
+                                   pagelength = 10,
+                                   lengthMenu = list(c(10, 25, -1),
+                                                     c('10', '25', 'All'))))
+    }
+  })
+  
+  # plot feature levels
+  plot_feature_levels <- reactive({
+    assay_type <- get_assay_type()
+    feature <- get_feature()
+    fname <- format_feature()
+    plot_types <- input$plot_type
+    plotdat <- get_feature_levels()
+    if (is_empty(assay_type) | is_empty(fname) | is_empty(plotdat)) {
+      return()
+    }
     plotdat_summary <- plotdat %>% group_by(Group) %>%
-      summarise(mean = mean(expr)) %>%
+      summarise(mean = mean(`Z-Score`)) %>%
       arrange(-mean)
-    print(head(plotdat_summary))
     plotdat$Group <- factor(plotdat$Group, levels = plotdat_summary$Group)
-    print(head(plotdat))
-    ggplot(plotdat, aes(x = Group, y = expr, fill = Group)) +
-      geom_violin(draw_quantiles = T, trim = F, alpha = .5) +
-      theme_bw(base_size = 18) +
-      xlab("Sample Type") + ylab(paste0(feature," Level")) +
+    a <- ggplot(plotdat, aes(x = Group, y = `Z-Score`)) +
+      theme_bw(base_size = 18) + 
       theme(panel.grid = element_blank(),
             legend.position = "none",
+            axis.title.x = element_blank(),
             axis.ticks.x = element_blank(),
-            axis.text.x = element_text(angle = 45, hjust = 1))
+            axis.text.y = element_text(color = "black"),
+            axis.text.x = element_text(angle = 45, hjust = 1, color = "black"))
+    if (assay_type == "RNAseq") {
+      a <- a + ylab(paste0(fname," Expression [TPM]"))
+    } else {
+      a <- a + ylab(paste0(feature, " Level [AU]"))
+    }
+    if ("dotplot" %in% plot_types) {
+      a <- a + geom_point(aes(color = Group),
+                          alpha = .5,
+                          position = position_dodge2(width = .5))
+    }
+    if ("violin" %in% plot_types) {
+      a <- a + geom_violin(aes(fill = Group))
+    }
+    if ("boxplot" %in% plot_types) {
+      if ("dotplot" %in% plot_types & "violin" %in% plot_types) {
+        a <- a + geom_boxplot(aes(fill = Group), width = 0.2, outlier.shape = NA)
+      } else if ("dotplot" %in% plot_types) {
+        a <- a + geom_boxplot(aes(fill = Group), width = 0.8, outlier.shape = NA)
+      } else if ("violin" %in% plot_types) {
+        a <- a + geom_boxplot(aes(fill = Group), width = 0.2)
+      } else {
+        a <- a + geom_boxplot(aes(fill = Group), width = 0.8)
+      }
+    }
+    return(a)
   })
+  
+  # render feature levels plot
+  output$feature_levels_plot <- renderPlot({
+    plot_feature_levels()
+  })
+  
+  # download feature levels plot as png
+  output$dl_feature_levels_plot_png <- downloadHandler(
+    filename = function() {
+      paste0("CCLE_", get_assay_type(), "_",
+             format_feature(), "_levels_distribution.", Sys.Date(), ".png")
+    },
+    content = function(file) {
+      plot <- plot_feature_levels()
+      ggsave(plot = plot, filename = file, height = 5, width = 10)
+    }
+  )
+  
+  # download feature levels plot as ppt
+  output$dl_feature_levels_plot_ppt <- downloadHandler(
+    filename = function() {
+      paste0("CCLE_", get_assay_type(), "_",
+             format_feature(), "_levels_distribution.", Sys.Date(), ".pptx")
+    },
+    content = function(file) {
+      file_pptx <- tempfile(fileext = ".pptx")
+      gen_pptx(plot_feature_levels(), file_pptx)
+      file.rename(from = file_pptx, to = file)
+    }
+  )
   
   # plot tSNE of pheno dat
   output$pheno_tsne_plot <- renderPlot({
@@ -248,4 +356,4 @@ server <- function(input, output) {
 }
 
 ############### run ############### 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server) 
