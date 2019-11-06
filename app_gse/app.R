@@ -16,26 +16,24 @@ gen_pptx <- function(plot, file) {
       print(target = file)
 }
 
-# Define UI for application that draws a histogram
 ui <- fluidPage(
    
-   title = "CCLE", 
+   title = "ssPEA", 
    theme = "bootstrap.flatly.css",
    
    titlePanel(tags$h3(tags$a(
       imageOutput("icon", height = "50px", width = "50px", inline = TRUE),
       href="http://10.197.211.94:3838"), 
-      "Cancer Cell Line Encyclopedia")),
+      "Pathway Enrichment Anlysis")),
    
    tabsetPanel(
-      tabPanel("Sample Info",
-               plotOutput("pheno_tsne_plot") %>% withSpinner(color="#0dc5c1"),
-               br(),
+      tabPanel("Data Upload",
+               selectInput('input_type', "Select Dataset or Upload:", 
+                           choices = list("")),
                DT::DTOutput('sample_info_dt'))
    )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output) {
    output$MAplot <- renderPlotly({
       ggplot(dat, aes(x = AveExpr, y = logFC, label = protein)) + 
