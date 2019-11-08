@@ -1,0 +1,7 @@
+{
+  "name": "nodejs",
+  "author": "josh hartigan and nodejs.org",
+  "license": "nodejs.org/about/trademark",
+  "vector": "http://hexb.in/vector/nodejs.pdf",
+  "raster": "http://hexb.in/hexagons/nodejs.png"
+}

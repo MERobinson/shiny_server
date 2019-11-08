@@ -48,8 +48,8 @@ names(datasets) <- dataset_info$Name
 gen_pptx <- function(plot, file) {
   read_pptx() %>% 
     add_slide(layout = "Title and Content", master = "Office Theme") %>% 
-    ph_with_vg(doc, ggobj = plot, type = 'body') %>% 
-    print(target = file)
+    ph_with_vg(ggobj = p[[1]], type = 'body') %>% 
+    print(target = "test.pptx")
 }
 
 ############### ui ############### 

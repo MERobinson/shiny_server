@@ -1,275 +1,93 @@
-<!doctype html>
+<!doctype html5>
 <html>
+  <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, maximum-scale=1">
+  <title>muschen lab shiny server</title>
 
-	<title>Homepage</title>
-	<link rel="icon" href="favicon.png" type="image/png">
-	<link rel="shortcut icon" href="favicon.ico" type="img/x-icon">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
 
-	<link href='https://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>
-	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,800italic,700italic,600italic,400italic,300italic,800,700,600' rel='stylesheet' type='text/css'>
+  <link href="assets/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/bundle.css" rel="stylesheet">
 
-	<link href="css/bootstrap.css" rel="stylesheet" type="text/css">
-	<link href="css/style.css" rel="stylesheet" type="text/css">
-	<link href="css/font-awesome.css" rel="stylesheet" type="text/css">
-	<link href="css/responsive.css" rel="stylesheet" type="text/css">
-	<link href="css/magnific-popup.css" rel="stylesheet" type="text/css">
-	<link href="css/animate.css" rel="stylesheet" type="text/css">
+  <meta property="og:title" content="Muschen Lab Schiny Server.">
+  <meta property="og:name" content="MLS">
 
-	<script type="text/javascript" src="js/jquery.1.8.3.min.js"></script>
-	<script type="text/javascript" src="js/bootstrap.js"></script>
-	<script type="text/javascript" src="js/jquery-scrolltofixed.js"></script>
-	<script type="text/javascript" src="js/jquery.easing.1.3.js"></script>
-	<script type="text/javascript" src="js/jquery.isotope.js"></script>
-	<script type="text/javascript" src="js/wow.js"></script>
-	<script type="text/javascript" src="js/classie.js"></script>
-	<script type="text/javascript" src="js/magnific-popup.js"></script>
-	<script src="contactform/contactform.js"></script>
-
-	<!-- =======================================================
-    Theme Name: Knight
-    Theme URL: https://bootstrapmade.com/knight-free-bootstrap-theme/
-    Author: BootstrapMade
-    Author URL: https://bootstrapmade.com
-	======================================================= -->
-
+<style type="text/css">
+body {
+  background: url("assets/bg.jpg") no-repeat center center fixed;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+}
+</style>
 </head>
 
 <body>
-	<header class="header" id="header">
-		<!--header-start-->
-		<div class="container">
-			<figure class="logo animated fadeInDown delay-07s">
-				<a href="#"><img src="img/logo.png" alt=""></a>
-			</figure>
-			<h1 class="animated fadeInDown delay-07s">Welcome To Muschen Lab Shiny Server</h1>
-			<ul class="we-create animated fadeInUp delay-1s">
-				<li>MORE TEXT HERE AND STUFF</li>
-			</ul>
-			<a class="link animated fadeInUp delay-1s servicelink" href="#Apps">Get Started</a>
-		</div>
-	</header>
-	<!--header-end-->
+<div class="container">
+  <nav class="navbar" role="navigation">
+    <div class="container-fluid">
+  <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand selected" href="/">
+          <img src="assets/nav.png">
+        </a>
+      </div>
 
-	<nav class="main-nav-outer" id="test">
-		<!--main-nav-start-->
-		<div class="container">
-			<ul class="main-nav">
-				<li><a href="#header">Home</a></li>
-				<li><a href="#Apps">Apps</a></li>
-				<li class="small-logo"><a href="#header"><img src="img/small-logo.png" alt=""></a></li>
-				<li><a href="#client">Docs</a></li>
-				<li><a href="#team">Data</a></li>
-			</ul>
-			<a class="res-nav_click" href="#"><i class="fa fa-bars"></i></a>
-		</div>
-	</nav>
-	<!--main-nav-end-->
+  <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li><a href="data/index.html">Docs</a></li>
+          <li><a href="https://github.com/MERobinson/shiny_server">GitHub</a></li>
+          <li><a href="data/index.html">Data</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</div>
 
-	<section class="main-section paddind" id="Apps">
-		<!--main-section-start-->
-		<div class="container">
-			<h2>APPS</h2>
-			<h6>Check out these popping apps son.</h6>
-			<div class="portfolioFilter">
-				<ul class="Portfolio-nav wow fadeIn delay-02s">
-					<li><a href="#" data-filter="*" class="current">All</a></li>
-					<li><a href="#" data-filter=".expression">Gene Expression</a></li>
-					<li><a href="#" data-filter=".prognosis">Prognosis</a></li>
-					<li><a href="#" data-filter=".protein">Protein Level</a></li>
-					<li><a href="#" data-filter=".photography">IDK</a></li>
-				</ul>
-			</div>
+<div class="navhr"></div>
 
-		</div>
-		<div class="portfolioContainer wow fadeInUp delay-04s">
-			<div class="prognosis">
-				<a href="app_prognosis"><img src="www/moose.png" alt=""></a>
-				<h3>Patient Prognosis</h3>
-				<p>Examine how gene expression affects prognosis</p>
-			</div>
-			<div class="expression">
-				<a href="app_geo"><img src="www/geodude.jpg" alt=""></a>
-				<h3>GEOdude</h3>
-				<p>Explore public expression data</p>
-			</div>
-			<div class="protein">
-				<a href="app_ccle"><img src="www/pigeon_icon.jpg" alt="" style="height: 225px"></a>
-				<h3>CCLE Data</h3>
-				<p>Protein and gene expression accross cell lines</p>
-			</div>
-		</div>
-	</section>
-	<!--main-section-end-->
+<div class="container main-content">
 
-	<section class="main-section team" id="team">
-		<!--main-section team-start-->
-		<div class="container" style="margin-bottom: 20em">
-			<h2>team</h2>
-			<h6>Take a closer look into our amazing team. (do not feed).</h6>
-				<div class="team-leader-box">
-					<div class="team-leader  wow fadeInDown delay-06s">
-						<div class="team-leader-shadow"><a href="#"></a></div>
-						<img src="www/me.jpg" alt="" style="height: 300px; width: 310px">
-						<ul>
-							<li><a href="#" class="fa fa-twitter"></a></li>
-							<li><a href="#" class="fa fa-facebook"></a></li>
-							<li><a href="#" class="fa fa-pinterest"></a></li>
-							<li><a href="#" class="fa fa-google-plus"></a></li>
-						</ul>
-					</div>
-					<h3 class="wow fadeInDown delay-06s">ME</h3>
-					<span class="wow fadeInDown delay-06s">Product Manager</span>
-					<p class="wow fadeInDown delay-06s">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin consequat sollicitudin cursus. Dolor sit amet, consectetur adipiscing elit proin consequat.</p>
-				</div>
-				<div class="team-leader-box">
-					<div class="team-leader  wow fadeInDown delay-06s">
-						<div class="team-leader-shadow"><a href="#"></a></div>
-						<img src="www/also_me.jpg" alt="" style="height: 300px; width: 310px">
-						<ul>
-							<li><a href="#" class="fa fa-twitter"></a></li>
-							<li><a href="#" class="fa fa-facebook"></a></li>
-							<li><a href="#" class="fa fa-pinterest"></a></li>
-							<li><a href="#" class="fa fa-google-plus"></a></li>
-						</ul>
-					</div>
-					<h3 class="wow fadeInDown delay-06s">Me again</h3>
-					<span class="wow fadeInDown delay-06s">Product Manager</span>
-					<p class="wow fadeInDown delay-06s">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin consequat sollicitudin cursus. Dolor sit amet, consectetur adipiscing elit proin consequat.</p>
-				</div>
-				<div class="team-leader-box">
-					<div class="team-leader  wow fadeInDown delay-06s">
-						<div class="team-leader-shadow"><a href="#"></a></div>
-						<img src="www/me.jpg" alt="" style="height: 300px; width: 310px">
-						<ul>
-							<li><a href="#" class="fa fa-twitter"></a></li>
-							<li><a href="#" class="fa fa-facebook"></a></li>
-							<li><a href="#" class="fa fa-pinterest"></a></li>
-							<li><a href="#" class="fa fa-google-plus"></a></li>
-						</ul>
-					</div>
-					<h3 class="wow fadeInDown delay-06s">Me, but slightly more to the right</h3>
-					<span class="wow fadeInDown delay-06s">Product Manager</span>
-					<p class="wow fadeInDown delay-06s">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin consequat sollicitudin cursus. Dolor sit amet, consectetur adipiscing elit proin consequat.</p>
-				</div>
-			</div>
-		</div>
-	</section>
-	<footer class="footer">
-		<div class="container">
-			<div class="footer-logo"><a href="#"><img src="img/footer-logo.png" alt=""></a></div>
-			<span class="copyright">&copy; Markey-Robbo-Incredible-Shit-Ltd</span>
-			<div class="credits">
-				<!--
-          All the links in the footer should remain intact.
-          You can delete the links only if you purchased the pro version.
-          Licensing information: https://bootstrapmade.com/license/
-          Purchase the pro version with working PHP/AJAX contact form: https://bootstrapmade.com/buy/?theme=Knight
-        -->
-				Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
-			</div>
-		</div>
-	</footer>
+  <div id = "epic">
+  </div>
+  <div id="grid" style="position: relative; margin-bottom: 20px;">
+    <a href="app_prognosis" target="_blank">
+        <img class="hex" src="hexagons/objs-org.png" alt="objs.org">
+    </a>
+    <a href="app_prognosis" target="_blank">
+        <img class="hex" src="hexagons/objs-org.png" alt="objs.org">
+    </a>
+    <a href="app_prognosis" target="_blank">
+        <img class="hex" src="hexagons/objs-org.png" alt="objs.org">
+    </a>
+    <a href="app_prognosis" target="_blank">
+        <img class="hex" src="hexagons/objs-org.png" alt="objs.org">
+    </a>
+    <a href="app_prognosis" target="_blank">
+        <img class="hex" src="hexagons/objs-org.png" alt="objs.org">
+    </a>
+  </div>
 
+</div>
+<script src="https://code.jquery.com/jquery-2.2.0.min.js" type="text/javascript"></script>
+<script src="assets/shuffle.js" type="text/javascript"></script>
+<script src="assets/bundle.js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-	<script type="text/javascript">
-		$(document).ready(function(e) {
+  ga('create', 'UA-57394743-1', 'auto');
+  ga('send', 'pageview');
 
-			$('#test').scrollToFixed();
-			$('.res-nav_click').click(function() {
-				$('.main-nav').slideToggle();
-				return false
+</script>
 
-			});
-
-      $('.Portfolio-box').magnificPopup({
-        delegate: 'a',
-        type: 'image'
-      });
-
-		});
-	</script>
-
-	<script>
-		wow = new WOW({
-			animateClass: 'animated',
-			offset: 100
-		});
-		wow.init();
-	</script>
-
-
-	<script type="text/javascript">
-		$(window).load(function() {
-
-			$('.main-nav li a, .servicelink').bind('click', function(event) {
-				var $anchor = $(this);
-
-				$('html, body').stop().animate({
-					scrollTop: $($anchor.attr('href')).offset().top - 102
-				}, 1500, 'easeInOutExpo');
-				/*
-				if you don't want to use the easing effects:
-				$('html, body').stop().animate({
-					scrollTop: $($anchor.attr('href')).offset().top
-				}, 1000);
-				*/
-				if ($(window).width() < 768) {
-					$('.main-nav').hide();
-				}
-				event.preventDefault();
-			});
-		})
-	</script>
-
-	<script type="text/javascript">
-		$(window).load(function() {
-
-
-			var $container = $('.portfolioContainer'),
-				$body = $('body'),
-				colW = 375,
-				columns = null;
-
-
-			$container.isotope({
-				// disable window resizing
-				resizable: true,
-				masonry: {
-					columnWidth: colW
-				}
-			});
-
-			$(window).smartresize(function() {
-				// check if columns has changed
-				var currentColumns = Math.floor(($body.width() - 30) / colW);
-				if (currentColumns !== columns) {
-					// set new column count
-					columns = currentColumns;
-					// apply width to container manually, then trigger relayout
-					$container.width(columns * colW)
-						.isotope('reLayout');
-				}
-
-			}).smartresize(); // trigger resize to set container width
-			$('.portfolioFilter a').click(function() {
-				$('.portfolioFilter .current').removeClass('current');
-				$(this).addClass('current');
-
-				var selector = $(this).attr('data-filter');
-				$container.isotope({
-
-					filter: selector,
-				});
-				return false;
-			});
-
-		});
-	</script>
-
-</body>
-
-</html>
+</body></html>
