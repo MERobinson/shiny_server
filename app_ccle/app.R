@@ -10,6 +10,7 @@ library(rvg)
 library(colourpicker)
 library(randomcoloR)
 library(shinycssloaders)
+library(shinythemes)
 options(stringsAsFactors = F)
 
 # load CCLE data
@@ -43,10 +44,9 @@ gen_pptx <- function(plot, file) {
 ui <- fluidPage(
   
   title = "CCLE", 
-  theme = "bootstrap.flatly.css",
-
+  theme = shinytheme("flatly"),
   titlePanel(tags$h3(tags$a(
-    imageOutput("icon", height = "50px", width = "50px", inline = TRUE),
+    imageOutput("icon", inline = TRUE),
                 href="http://10.197.211.94:3838"), 
     "Cancer Cell Line Encyclopedia")),
   
@@ -88,8 +88,8 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   # icon
-  output$icon <- renderImage(list(src = "www/pigeon_icon.jpg",
-                                  height = "50px", width = "50px"), 
+  output$icon <- renderImage(list(src = "../hexagons/ccle.png",
+                                  height = "84px", width = "72px"), 
                              deleteFile = F)
   
   # samples table
@@ -155,7 +155,8 @@ server <- function(input, output) {
     if (is_empty(assay_type)) {
       return()
     } else {
-      return(ccledat$fdat[[assay_type]][input$feature_info_dt_rows_selected,1])
+      feat <- ccledat$fdat[[assay_type]][input$feature_info_dt_rows_selected,1]
+      return(as.character(feat))
     }
   })
   
@@ -227,9 +228,10 @@ server <- function(input, output) {
     if (is_empty(assay_type) | is_empty(fname) | is_empty(plotdat)) {
       return()
     }
-    plotdat_summary <- plotdat %>% group_by(Group) %>%
-      summarise(mean = mean(`Z-Score`)) %>%
-      arrange(-mean)
+    plotdat_summary <- plotdat %>% 
+      dplyr::group_by(Group) %>%
+      dplyr::summarise(mean = mean(`Z-Score`)) %>%
+      dplyr::arrange(-mean)
     plotdat$Group <- factor(plotdat$Group, levels = plotdat_summary$Group)
     a <- ggplot(plotdat, aes(x = Group, y = `Z-Score`)) +
       theme_bw(base_size = 18) + 

@@ -16,8 +16,8 @@ options(stringsAsFactors = F)
 #                                  keys = genes,
 #                                  keytype = "SYMBOL",
 #                                  columns = c("ALIAS","ENTREZID","GENENAME"))
-# saveRDS(aliases, "../data/gene_info_hs.rds")
-genes <- readRDS("../data/gene_info_hs.rds")
+# saveRDS(aliases, "/poolio/gene_info_hs.rds")
+genes <- readRDS("/poolio/gene_info_hs.rds")
 
 # tmp until i sort out db
 # datasets <- list.files("/poolio/public_data/GEO_expr/rds", pattern = '.rds', full.names = T)
@@ -48,8 +48,8 @@ names(datasets) <- dataset_info$Name
 gen_pptx <- function(plot, file) {
   read_pptx() %>% 
     add_slide(layout = "Title and Content", master = "Office Theme") %>% 
-    ph_with_vg(ggobj = p[[1]], type = 'body') %>% 
-    print(target = "test.pptx")
+    ph_with_vg(ggobj = plot, type = 'body') %>% 
+    print(target = file)
 }
 
 ############### ui ############### 
@@ -110,7 +110,7 @@ ui <- fluidPage(
 server <- function(input, output) {
 
   # icon
-  output$icon <- renderImage(list(src = "www/moose.png",
+  output$icon <- renderImage(list(src = "hexagons/ccle.png",
                                   height = "75px", width = "75px"), 
                              deleteFile = F)
   
@@ -373,15 +373,22 @@ server <- function(input, output) {
       setname <- names(dat)[x]
       lapply(seq_along(fits[[x]]), function(y) {
         catname <- names(cats[[x]])[y]
-        data.frame(pval = fits[[x]][[y]]$pval_txt,
+        data.frame(dataset = setname,
                    exprset = catname,
-                   dataset = setname)
+                   pval = fits[[x]][[y]]$pval_txt,
+                   nhigh = fits[[x]][[y]]$n[1],
+                   nlow = fits[[x]][[y]]$n[2])
       }) %>% bind_rows()
     }) %>% bind_rows()
+    pidx <- match(paste0(plotdat$dataset, "_", plotdat$exprset),
+                  paste0(pvals$dataset, "_", pvals$exprset))
+    plotdat$set_title <- paste0("(", str_trim(pvals[pidx,]$pval), 
+                                "; #high = ", pvals[pidx,]$nhigh, 
+                                "; #low = ", pvals[pidx,]$nlow, ")")
+    print(head(plotdat))
     ggplot(plotdat, aes(x = time, y = surv)) +
       geom_line(aes(col = group), lwd = 1.1, alpha = .6) +
-      geom_text(data = pvals, aes(x = 1.3, y = .1, label = pval)) +
-      facet_wrap(dataset ~ exprset, scales = "free") +
+      facet_wrap(dataset ~ set_title, scales = "free") +
       theme_classic(base_size = 16) +
       scale_color_manual(values = c(input$col_expr_low, input$col_expr_high), 
                          name = "Expression level", 

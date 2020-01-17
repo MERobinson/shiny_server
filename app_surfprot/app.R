@@ -8,7 +8,8 @@ options(stringsAsFactors = F)
 # test list: YLAT1 LAT3 S38A2  YLAT2 LAT1 S38A1 CTR1  4F2  Slc1a5 Slc1a4 Epha2 Epha5
 
 # load data
-dat <- readRDS("/poolio/internal_data/surf_proteomics/GD_surfprot_BCR_ABL1_4h.2019-11-07.rds")
+dat <- readRDS("/poolio/internal_data/surf_proteomics/GD_surfprot_BCR_ABL1_4h.2019-11-08.rds")
+dat <- as.data.frame(dat)
 
 # set stored values
 values <- reactiveValues(selprot = vector())
@@ -87,23 +88,23 @@ server <- function(input, output) {
    
    # plot scatter
    gen_scatter_plot <- reactive({
-      ggplot(dat, aes(x = av_LFQ_norm, y = av_LFQ_leuk, label = protein_symbol)) + 
-         geom_point(aes(col = log_pval_ttest > -log10(0.05)), alpha = .5, size = 1) +
-         geom_point(data = subset(dat, TM_dom_presence == "Y"),
+      ggplot(dat, aes(x = av_norm, y = av_leuk, label = protein_name)) + 
+         geom_point(aes(col = pval > -log10(0.05)), alpha = .5, size = 1) +
+         geom_point(data = subset(dat, TM_domain_presence == "Y"),
                     col = "black", fill = NA, shape = 21, size = 1.5) +
          geom_point(data = subset(dat, rownames(dat) %in% values$selprot),
                     col = "purple", fill = NA, shape = 21, size = 2.5) +
          geom_text(data = subset(dat, rownames(dat) %in% values$selprot),
-                   aes(label = protein_symbol, col = log_pval_ttest > -log10(0.05)), size = 5, 
+                   aes(label = protein_name, col = pval > -log10(0.05)), size = 5, 
                    position = position_nudge(y=.5)) +
          scale_color_manual(values = c("grey20","firebrick"),
                             labels = c("non-significant","p < 0.05", " ")) +
          xlab("Abundance - Normal [LFQ]") +
          ylab("Abundance - Leukemia [LFQ]") +
-         scale_x_continuous(limits = c(min(dat$av_LFQ_norm, na.rm = T),
-                                       max(dat$av_LFQ_norm, na.rm = T))) +
-         scale_y_continuous(limits = c(min(dat$av_LFQ_leuk, na.rm = T),
-                                       max(dat$av_LFQ_leuk, na.rm = T))) +
+         scale_x_continuous(limits = c(min(dat$av_norm, na.rm = T),
+                                       max(dat$av_norm, na.rm = T))) +
+         scale_y_continuous(limits = c(min(dat$av_leuk, na.rm = T),
+                                       max(dat$av_leuk, na.rm = T))) +
          theme_bw(base_size = 16) +
          theme(panel.grid = element_blank(),
                legend.background = element_blank(),
@@ -117,20 +118,20 @@ server <- function(input, output) {
    
    # plot scatter
    gen_volcano_plot <- reactive({
-      ggplot(dat, aes(x = l2fc_ttest, y = log_pval_ttest, label = protein_symbol)) + 
-         geom_point(aes(col = log_pval_ttest > -log10(0.05)), alpha = .5, size = 1) +
-         geom_point(data = subset(dat, TM_dom_presence == "Y"),
+      ggplot(dat, aes(x = l2fc, y = pval, label = protein_name)) + 
+         geom_point(aes(col = pval > -log10(0.05)), alpha = .5, size = 1) +
+         geom_point(data = subset(dat, TM_domain_presence == "Y"),
                     col = "black", fill = NA, shape = 21, size = 1.5) +
          geom_point(data = subset(dat, rownames(dat) %in% values$selprot),
                     col = "purple", fill = NA, shape = 21, size = 2.5) +
          geom_text(data = subset(dat, rownames(dat) %in% values$selprot),
-                   aes(label = protein_symbol, col = log_pval_ttest > -log10(0.05)), size = 5, 
+                   aes(label = protein_name, col = pval > -log10(0.05)), size = 5, 
                    position = position_nudge(y=.05)) +
          scale_color_manual(values = c("grey20","firebrick"),
                             labels = c("non-significant","p < 0.05", " ")) +
          scale_x_continuous(limits = c(-15,15)) +
-         scale_y_continuous(limits = c(min(dat$log_pval_ttest, na.rm = T),
-                                       max(dat$log_pval_ttest, na.rm = T))) +
+         scale_y_continuous(limits = c(min(dat$pval, na.rm = T),
+                                       max(dat$pval, na.rm = T))) +
          xlab("Fold Change - Leuk / Healthy [log2]") +
          ylab("Significance [-log10 p-value]") +
          theme_bw(base_size = 16) +
@@ -146,21 +147,21 @@ server <- function(input, output) {
    
    # plot MA
    gen_ma_plot <- reactive({
-      ggplot(dat, aes(x = av_LFQ, y = l2fc_ttest, label = protein_symbol)) + 
-         geom_point(aes(col = log_pval_ttest > -log10(0.05)), alpha = .5, size = 1) +
-         geom_point(data = subset(dat, TM_dom_presence == "Y"),
+      ggplot(dat, aes(x = av_expr, y = l2fc, label = protein_name)) + 
+         geom_point(aes(col = pval > -log10(0.05)), alpha = .5, size = 1) +
+         geom_point(data = subset(dat, TM_domain_presence == "Y"),
                     col = "black", fill = NA, shape = 21, size = 1.5) +
          geom_point(data = subset(dat, rownames(dat) %in% values$selprot),
                     col = "purple", fill = NA, shape = 21, size = 2.5) +
          geom_text(data = subset(dat, rownames(dat) %in% values$selprot),
-                   aes(label = protein_symbol, col = log_pval_ttest > -log10(0.05)), size = 5, 
+                   aes(label = protein_name, col = pval > -log10(0.05)), size = 5, 
                    position = position_nudge(x=1, y=1)) +
          scale_color_manual(values = c("grey20","firebrick"),
                             labels = c("non-significant","p < 0.05", " ")) +
-         scale_y_continuous(limits = c(min(dat$l2fc_ttest, na.rm = T),
-                                       max(dat$l2fc_ttest, na.rm = T))) +
-         scale_x_continuous(limits = c(min(dat$av_LFQ, na.rm = T),
-                                       max(dat$av_LFQ, na.rm = T))) +
+         scale_y_continuous(limits = c(min(dat$l2fc, na.rm = T),
+                                       max(dat$l2fc, na.rm = T))) +
+         scale_x_continuous(limits = c(min(dat$av_expr, na.rm = T),
+                                       max(dat$av_expr, na.rm = T))) +
          xlab("Abundance - Average [LFQ]") +
          ylab("Fold Change - Leuk / Healthy [log2]") +
          theme_bw(base_size = 16) +
@@ -204,10 +205,10 @@ server <- function(input, output) {
    observeEvent(input$input_go_bttn, {
       id_list <- strsplit(input$id_input, split = ",| |\n")[[1]]
       id_list <- id_list[lapply(id_list, nchar) > 0]
-      prot <- id_list[id_list %in% dat$protein_symbol]
+      prot <- id_list[id_list %in% dat$protein_name]
       unipro <- id_list[id_list %in% dat$uniprot_id]
       if (length(unipro) > 0) {
-         prot <- c(prot, dat[dat$uniprot_id %in% unipro,]$protein_symbol)
+         prot <- c(prot, dat[dat$uniprot_id %in% unipro,]$protein_name)
       }
       genelist <- sapply(dat$gene_symbols, function(x) {
          tmp <- strsplit(x, split = " |;")[[1]]
@@ -215,9 +216,9 @@ server <- function(input, output) {
       genes <- id_list[id_list %in% unlist(genelist)]
       if (length(genes) > 0) {
          idx <- unlist(lapply(genelist, function(x) any(x %in% genes)))
-         prot <- c(prot, dat[idx,]$protein_symbol)
+         prot <- c(prot, dat[idx,]$protein_name)
       }
-      missing <- id_list[!id_list %in% c(dat$protein_symbol, dat$uniprot_id, unlist(genelist))]
+      missing <- id_list[!id_list %in% c(dat$protein_name, dat$uniprot_id, unlist(genelist))]
       if (length(missing) > 0) {
          print(missing)
          output$missing_prot <- renderText(paste0("Following names could not be found: ",
@@ -226,7 +227,7 @@ server <- function(input, output) {
          output$missing_prot <- NULL
       }
       if (length(prot) > 0) {
-        values$selprot <- unique(c(values$selprot, rownames(dat[dat$protein_symbol %in% prot,])))
+        values$selprot <- unique(c(values$selprot, rownames(dat[dat$protein_name %in% prot,])))
       }
    })
    
@@ -239,15 +240,16 @@ server <- function(input, output) {
    output$protein_info_dt <- DT::renderDT({
       sel_prot <- values$selprot
       if (is_empty(sel_prot)) {
-         seldat <- dat[, c(1:8,10:18)]
+         seldat <- dat[, c(1:2,15,17:20,3:14)]
       } else {
-         seldat <- dat[sel_prot, c(1:8,10:1)]
+         seldat <- dat[sel_prot, c(1:2,15,17:20,3:14)]
       }
-      colnames(seldat) <- c("Protein Name", "UniProt ID", "Gene Symbols", "Total UniqPep",
-                            "av LFQ", "Specificity", "avLFQ Normal", "avLFQ leukemia", 
-                            "L2FC t-test", "p-val t-test", "q-val t-test",
-                            "L2FC lm", "p-val lm", "q-val lm",
-                            "TM Domain", "# TM Domain", "Membrane Type")
+      colnames(seldat) <- c("Protein Name", "UniProt ID", "Gene Symbols", 
+                            "Specificity","TM Domain", "# TM Domain", "Membrane Type",
+                            "L2FC", "p-value", "q-value",
+                            "Av Expr", "Av Normal", "Av leukemia", 
+                            "normal r1", "normal r2", "normal r3",
+                            "leukemia r1", "leukemia r2", "leukemia r3")
       seldat[,sapply(seldat, is.numeric)] <- apply(seldat[,sapply(seldat, is.numeric)],
                                                    2, function(x) signif(x, 2))
       DT::datatable(seldat, rownames = F,
@@ -267,11 +269,11 @@ server <- function(input, output) {
                                                        filename = paste0("surfprot_selected_proteins_info.", Sys.Date()),
                                                        title = "Surface Proteomics - Selected Protein")),
                                    columnDefs = list(list(
-                                      targets = c(3),
+                                      targets = c(3,6),
                                       render = JS(
                                          "function(data, type, row, meta) {",
-                                         "return type === 'display' && data.length > 15 ?",
-                                         "'<span title=\"' + data + '\">' + data.substr(0, 15) + '...</span>' : data;",
+                                         "return type === 'display' && data.length > 10 ?",
+                                         "'<span title=\"' + data + '\">' + data.substr(0, 10) + '...</span>' : data;",
                                          "}")))),
                     callback = JS('table.page(3).draw(false);'))
    })
