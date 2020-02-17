@@ -15,18 +15,30 @@ options(stringsAsFactors = F)
 ################################# Setup #######################################
 
 # function to generate pptx
-gen_pptx <- function(plot, file, height = 5, width = 5, left = 1, top = 1) {
+gen_pptx <- function(notxt_plot, plot_outline, file, height = 4, width = 4, left = 0, top = 0) {
     read_pptx() %>% 
         add_slide(layout = "Title and Content", master = "Office Theme") %>% 
-        ph_with_vg_at(doc, ggobj = plot, type = 'body', 
+        ph_with_gg(value = notxt_plot, type = "body",
+                   location = ph_location(height = height, width = width,
+                                          left = left, top = top)) %>%
+        ph_with_vg_at(ggobj = plot_outline, type = 'body', 
                       height = height, width = width,
                       left = left, top = top) %>% 
         print(target = file)
 }
 
+# density function
+get_density <- function(x, y, ...) {
+    dens <- MASS::kde2d(x, y, ...)
+    ix <- findInterval(x, dens$x)
+    iy <- findInterval(y, dens$y)
+    ii <- cbind(ix, iy)
+    return(dens$z[ii])
+}
+
 # load internal datasets
-internal_dat <- list.files("data", pattern = ".xlsx", full.names = T)
-names(internal_dat) <- sub("^data/(.+)\\.xlsx", "\\1", internal_dat)
+internal_files <- list.files("/poolio/internal_data/scWB", pattern = ".xlsx", full.names = T)
+names(internal_files) <- sub("^.+/(.+)\\.xlsx", "\\1", internal_files)
 
 #################################### UI #######################################
 ui <- function(request) {
@@ -34,35 +46,44 @@ ui <- function(request) {
         
         # title
         title = "scWB", 
-        theme = shinytheme("flatly"),
+        theme = shinytheme("lumen"),
         
         titlePanel(tags$h3(tags$a(
             imageOutput("icon", height = "50px", width = "50px", inline = TRUE),
             href="http://10.197.211.94:3838"), 
-            "Prism")),
+            "single cell Western Blot")),
         
         sidebarLayout(
             sidebarPanel(width = 3,
-                         selectInput(inputId, label, choices, selected = NULL, multiple = FALSE,
-                                     selectize = TRUE, width = NULL, size = NULL)
-                         selectInput(inputId = "existing_dat",
-                                     label = "Choose a dataset:",
-                                     choice = names(internal_df)),
+                         selectInput(inputId = "internal_file",
+                                     label = "Choose an existing dataset:",
+                                     choice = names(internal_files)),
                          fileInput(inputId = "input_file",
                                    label = "Upload an excel file:",
                                    multiple = F,
                                    accept = c(".xlsx")),
-                         div(style="display:inline-block;width:45%;", 
-                             colourInput("col_selected","Low", value = "#202080",
-                                         allowTransparent = TRUE)),
-                         div(style="display:inline-block;width:45%;", 
-                             colourInput("col_other","High", value = "#000000",
-                                         allowTransparent = TRUE)),
-                         textInput("ylab_text", "Y-axis label:"),
-                         textInput("xlab_text", "X-axis label:")
+                         selectInput(inputId = "palette",
+                                     label = "Select palette",
+                                     selected = "OrRd",
+                                     choices = c("Greys","Purples","Blues","Greens",
+                                                 "Oranges","Reds","YlOrBr","YlOrRd",
+                                                 "OrRd","PuRd","RdPu","PuBu","GnBu",
+                                                 "PuBu","YlGnBu","PuBuGn","BuGn","YlGn",
+                                                 "inferno","magma","plasma","viridis","cividis")),
+                         div(style="display:inline-block;width:48%;", 
+                             textInput("xlab_name", "X-axis target:")),
+                         div(style="display:inline-block;width:48%;", 
+                             textInput("ylab_name", "Y-axis target:")),
+                         div(style="display:inline-block;width:48%;", 
+                             sliderInput("xth", "X-axis theshold:", value = 2,
+                                     min = 0, max = 20)),
+                         div(style="display:inline-block;width:48%;", 
+                             sliderInput("yth", "Y-axis theshold:", value = 2,
+                                     min = 0, max = 20))
             ),
             mainPanel(width = 9,
-                      plotOutput("main_plot") %>% withSpinner(color="#0dc5c1"),
+                      uiOutput("plot_ui") %>% 
+                          withSpinner(color="#0dc5c1"),
                       div(style="display:inline-block;",
                           downloadButton("dl_main_plot_ppt", label = "PPT",
                                          style = "font-size:12px;height:30px;padding:5px;"),
@@ -72,10 +93,7 @@ ui <- function(request) {
                                          style = "font-size:13px;height:30px;padding:5px;")),
                       br(), br(),
                       tags$h4("Summary Stats:"),
-                      DT::DTOutput('stats_dt'),
-                      br(), br(),
-                      tags$h4("Input Data:"),
-                      DT::DTOutput('data_dt')
+                      DT::DTOutput('stats_dt')
             )
         )
         
@@ -87,47 +105,72 @@ ui <- function(request) {
 server <- function(input, output) {
     
     # icon
-    output$icon <- renderImage(list(src = "../hexagons/prism.png",
+    output$icon <- renderImage(list(src = "../hexagons/scwb.png",
                                     height = "84px", width = "72px"), 
                                deleteFile = F)
     
-    # load prism data
+    # load data
     load_data <- reactive({
-        if (is_empty(input$input_file)) return(NULL)
-        ext <- sub("^(.+)\\.(xlsx)","\\2",input$input_file$name)
-        if(ext == "xlsx") {
-            df <- as.data.frame(read_excel(path = input$input_file$datapath))
+        if (!is_empty(input$input_file)) {
+            path <- input$input_file$datapath
+        } else {
+            path <- internal_files[[input$internal_file]]
         }
+        sheets <- excel_sheets(path = path)
+        df <- lapply(sheets, function(sheet) {
+            tmp <- read_excel(path = path, sheet = sheet)
+            tmp$condition <- sheet
+            return(tmp)
+        }) %>% bind_rows() %>% na.omit() %>% as.data.frame() 
+        if (input$xlab_name == "") {
+            colnames(df)[1] <- gsub("[ \\-]", "_", colnames(df)[1])
+        } else {
+            colnames(df)[1] <- input$xlab_name
+        }
+        if (input$ylab_name == "") {
+            colnames(df)[2] <- gsub("[ \\-]", "_", colnames(df)[2])
+        } else {
+            colnames(df)[2] <- input$ylab_name
+        }
+        df[,1] <- df[,1] + runif(nrow(df), 0, 2)
+        df[,2] <- df[,2] + runif(nrow(df), 0, 2)
+        df[,1] <- ifelse(df[,1] < 1, df[,1], log2(df[,1]))
+        df[,2] <- ifelse(df[,2] < 1, df[,2], log2(df[,2]))
         return(df)
     })
     
     # get name from file
     get_name <- reactive({
-        sub("^(.+)\\.(pzfx|csv|xlsx)","\\1",input$input_file$name)
+        if (!is_empty(input$input_file)) {
+            gsub(" ", "_", sub("^(.+)\\.(xlsx)", "\\1", input$input_file$name))
+        } else {
+            gsub(" ", "_", sub("^(.+)\\.(xlsx)", "\\1", input$internal_file))
+        }
     })
     
-    # show data
-    output$data_dt <- DT::renderDT(
-        DT::datatable(as.data.frame(load_data()), 
-                      escape = F, 
-                      rownames = F,
-                      options = list(dom = 't',
-                                     pagelength = 5,
-                                     lengthMenu = list(c(5, 10, -1),
-                                                       c('5', '10', 'All'))))
-    )
-    
-    # run aov
+    # summary stats
     get_stats <- reactive({
         df <- load_data()
+        xth <- input$xth
+        yth <- input$yth
+        xlab <- sym(colnames(df)[1])
+        ylab <- sym(colnames(df)[2])
         if (is_empty(df)) return(NULL)
-        statdat <- na.omit(gather(df, "condition", "value"))
-        statdat$condition <- factor(statdat$condition, levels = colnames(df))
-        
+        stat_res <- df %>% group_by(condition) %>%
+            summarise(mean_x = round(mean(!!xlab), 2),
+                      mean_y = round(mean(!!ylab), 2),
+                      percent_x = round(sum(!!xlab > xth)/length(!!xlab), 2),
+                      percent_y = round(sum(!!ylab > yth)/length(!!ylab), 2),
+                      percent_dp = round(sum(!!xlab > xth & !!ylab > yth) /
+                                             length(!!xlab), 2) * 100) %>%
+            as.data.frame()
+        colnames(stat_res)[2:6] <- c(paste0(xlab," mean"), paste0(ylab," mean"),
+                                     paste0(xlab, " percent"), paste0(ylab, " percent"),
+                                     "percent DP")
         return(stat_res)
     })
     
-    # show data
+    # show summary stats
     output$stats_dt <- DT::renderDT(
         DT::datatable(get_stats(), 
                       escape = F, 
@@ -143,185 +186,96 @@ server <- function(input, output) {
                                                     list(extend = 'excel',
                                                          filename = paste0(get_name(), "_stat_res.xlsx"),
                                                          title = NULL))),
-                      caption = "Select rows to display significance bar.")
+                      caption = "Select rows to plot.")
     )
     
     # generate dotplot
-    gen_main_plot <- reactive({
+    gen_plots <- reactive({
         df <- load_data()
+        stats <- get_stats()
+        selcond <-  stats[input$stats_dt_rows_selected,]$condition
+        if (length(selcond) > 0) {
+            df <- df[df$condition %in% selcond,]
+            stats <- stats[stats$condition %in% selcond,]
+        }
+        df$condition <- factor(df$condition, levels = unique(df$condition))
+        xlab <- sym(colnames(df)[1])
+        ylab <- sym(colnames(df)[2])
+        xth <- input$xth
+        yth <- input$yth
         if (is_empty(df)) return(NULL)
-        plotdat <- na.omit(gather(df, "category", "value"))
-        plotdat$category <- factor(plotdat$category, 
-                                   levels = colnames(df))
-        select_col <- colnames(df)[(input$data_dt_columns_selected+1)]
-        plotdat$selected <- plotdat$category %in% select_col
-        
-        # scaling
-        if (input$scale_opt == T & input$control_type == "single") {
-            plotdat$value <- scale(plotdat$value)
-        } 
-        if (input$scale_opt == T & input$control_type == "paired") {
-            plotdat <- lapply(seq(1, ncol(df), by = 2), function(x) {
-                conds <- colnames(df)[c(x,(x+1))]
-                tmpdat <- plotdat[plotdat$category %in% conds,]
-                tmpdat$value <- tmpdat$value / mean(tmpdat$value)
-                return(tmpdat)
-            }) %>% bind_rows()
-        } 
-        
-        # basic plot outline
-        ymax <- max(plotdat$value, na.rm = T)
-        ymin <- min(plotdat$value, na.rm = T)
-        yrange <- ymax-ymin
-        p <- ggplot(plotdat, aes(x = category, y = value)) +
-            coord_cartesian(clip = "off", expand = c(1,0), 
-                            ylim = c(floor(ymin - (yrange/20)),
-                                     ceiling(ymax + (yrange/20)))) +
-            scale_fill_manual(values = c(input$col_other, input$col_selected),
-                              name = input$selected_cond_label) +
-            ylab(input$ylab_text) +
+        df$density <- get_density(df[,1], df[,2], n = 100)
+        stats$x <- 21; stats$y <- 22
+        stats$perc <- stats[,"percent DP"]
+        baseplot <- ggplot(df, aes(x = !!xlab, y = !!ylab)) +
+            scale_x_continuous(limits = c(-2,23), name = paste0(xlab, " intensity [AU]")) +
+            scale_y_continuous(limits = c(-2,23), name = paste0(ylab, " intensity [AU]")) +
+            facet_wrap(~condition, ncol = 4) +
             theme(panel.grid = element_blank(),
+                  axis.title = element_text(size = 14, color = "grey20", family = "Arial"),
+                  axis.text = element_text(size = 11, color = "grey20", family = "Arial"),
                   panel.background = element_blank(),
-                  panel.border = element_blank(),
-                  axis.ticks.x = element_blank(),
-                  axis.ticks.y = element_line(size = .8, color = "black"),
-                  axis.ticks.length = unit(.25, "cm"),
-                  axis.line.y = element_line(size = .8, color = "black"),
-                  axis.line.x = element_line(size = .8, color = "black"),
-                  axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-                  axis.title.x = element_blank(),
-                  axis.text = element_text(color = "black", family = "Arial", size = 18),
-                  text = element_text(color = "black", family = "Arial", size = 18),
-                  plot.margin = unit(c(5,15,2,2), "lines"),
-                  legend.position = c(1.2,.5))
-        
-        # different plot type elements
-        if (input$plot_type == "dotplot") {
-            p <- p + 
-                geom_dotplot(aes(fill = selected),
-                             bins = 50,
-                             binaxis='y', stackdir='center', 
-                             dotsize = (1.2 + 1/yrange),
-                             lwd = .6, alpha = .8) +
-                stat_summary(fun.y = mean, geom = "tile",
-                             width = .3, height = (yrange/75), 
-                             fill = "black") +
-                stat_summary(fun.y = mean,
-                             fun.ymin = function(x) mean(x) - sd(x),
-                             fun.ymax = function(x) mean(x) + sd(x),
-                             geom = "errorbar", width = .2,  height = .15) 
-        } else if (input$plot_type == "violin") {
-            p <- p + 
-                geom_violin(aes(fill = selected))
-        } else if (input$plot_type == "boxplot") {
-            p <- p + 
-                geom_boxplot(aes(fill = selected), width = .75)
+                  panel.border = element_rect(fill = NA, color = "black"),
+                  strip.background = element_blank(),
+                  strip.text = element_text(size = 14, color = "black", family = "Arial"),
+                  legend.position = "none")
+        if (input$palette %in% c("inferno","magma","plasma","viridis","cividis")) {
+            baseplot <- baseplot + scale_fill_viridis_c(option = input$palette) +
+                scale_color_viridis_c(option = input$palette)
+        } else {
+            baseplot <- baseplot + scale_fill_distiller(palette = input$palette, direction=-1) +
+                scale_color_distiller(palette = input$palette, direction=-1)
         }
-        
-        # different significance label elements
-        if (input$sig_style == "bars") {
-            stat_res <- get_stats()[input$stats_dt_rows_selected,]
-            comps <- as.list(split(stat_res[,1:2], seq(nrow(stat_res))))
-            comps <- unname(lapply(comps, function(x) unname(as.character(x))))
-            p <- p + ggpubr::stat_compare_means(comparisons = comps, 
-                                                label = "p.format",
-                                                size = 6,
-                                                bracket.size = 1.1)
-        } else if (input$sig_style == "heatmap") {
-            sigdat <- get_stats()
-            sigdat$p_value <- as.numeric(sigdat$p_value)
-            sigdat$nl10pval <- -log10(sigdat$p_value) * sign(sigdat$Difference)
-            if (input$control_type == "single") {
-                denom_lvl <- colnames(df)[1]
-                sigdat <- sigdat[sigdat$Denominator == denom_lvl,]
-                sigdat <- rbind(data.frame(Numerator = denom_lvl,
-                                           Denominator = denom_lvl,
-                                           Difference = 0,
-                                           CI_lower = 0,
-                                           CI_upper = 0,
-                                           p_value = 1,
-                                           nl10pval = 0),
-                                sigdat)
-                sigdat$y <- ceiling(ymax + (yrange/20)) + (yrange/20)
-                p <- p + 
-                    new_scale_fill() +
-                    geom_tile(data = sigdat, color = "black", lwd = (yrange/20), height = (yrange/12),
-                              aes(x = Numerator, y = y, fill = nl10pval)) +
-                    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
-                                         midpoint = 0, name = "Signed\np-value\n[-log10]")
-            } else if (input$control_type == "paired") {
-                denom_lvl <- colnames(df)[seq(1, ncol(df), 2)]
-                numer_lvl <- colnames(df)[seq(2, ncol(df), 2)]
-                matched_idx <- sapply(seq_along(numer_lvl), function(x) {
-                    which(sigdat$Denominator == denom_lvl[x] &
-                              sigdat$Numerator == numer_lvl[x]) })
-                sigdat <- sigdat[matched_idx,]
-                sigdat$x <- sapply(sigdat$Numerator, function(x) which(colnames(df) == x) - .5)
-                sigdat$y <- ceiling(ymax + (yrange/20)) + (yrange/20)
-                print(sigdat)
-                p <- p + 
-                    new_scale_fill() +
-                    geom_tile(data = sigdat, color = "black", lwd = (yrange/20), height = (yrange/12),
-                              aes(x = x, y = y, fill = nl10pval), width = 2) +
-                    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
-                                         midpoint = 0, name = "Signed\np-value\n[-log10]")
-            }
-        } else if (input$sig_style == "effect_size") {
-            if (input$control_type == "single") {
-                denom_lvl <- colnames(df)[1]
-                effsizes <- lapply(colnames(df)[-1], function(x) {
-                    tmp <- effsize::cohen.d(plotdat[plotdat$category == x,]$value,
-                                            plotdat[plotdat$category == denom_lvl,]$value)
-                    data.frame(condition = x, d = tmp$estimate) }) %>% bind_rows()
-                effsizes <- rbind(data.frame(condition = denom_lvl, d = 0), effsizes)
-                effsizes$y <- ceiling(ymax + (yrange/20)) + (yrange/20)
-                p <- p + 
-                    new_scale_fill() +
-                    geom_tile(data = effsizes, color = "black", lwd = (yrange/20), height = (yrange/12),
-                              aes(x = condition, y = y, fill = d)) +
-                    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
-                                         midpoint = 0, name = "Cohen's d")
-            } else if (input$control_type == "paired") {
-                denom_lvl <- colnames(df)[seq(1, ncol(df), 2)]
-                numer_lvl <- colnames(df)[seq(2, ncol(df), 2)]
-                effsizes <- lapply(seq_along(numer_lvl), function(x) {
-                    tmp <- effsize::cohen.d(plotdat[which(plotdat$category == numer_lvl[x]),]$value,
-                                            plotdat[which(plotdat$category == denom_lvl[x]),]$value)
-                    data.frame(x = (which(colnames(df) == numer_lvl[x]) - 0.5),
-                               d = tmp$estimate) }) %>% bind_rows()
-                effsizes$y <- ceiling(ymax + (yrange/20)) + (yrange/20)
-                p <- p + 
-                    new_scale_fill() +
-                    geom_tile(data = effsizes, color = "black", lwd = (yrange/20), height = (yrange/12),
-                              aes(x = x, y = y, fill = d), width = 2) +
-                    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
-                                         midpoint = 0, name = "Cohen's d")
-            }
-        }
-        return(p)
+        outline <- baseplot +
+            geom_text(data = stats, aes(x = x, y = y, label = perc), size = 5)
+        full <- baseplot + 
+            geom_hline(yintercept = yth, lty = 2, color = "grey", alpha = .8) +
+            geom_vline(xintercept = xth, lty = 2, color = "grey", alpha = .8) +
+            geom_point(aes(color = density), alpha = .4, size = .3) +
+            stat_density_2d(aes(fill = ..level..), geom = "polygon", h = 2, alpha = .6) +
+            geom_text(data = stats, aes(x = x, y = y, label = perc), size = 5)
+        notxt <- baseplot +
+            geom_hline(yintercept = yth, lty = 2, color = "grey", alpha = .8) +
+            geom_vline(xintercept = xth, lty = 2, color = "grey", alpha = .8) +
+            geom_point(aes(color = density), alpha = .4, size = .3) +
+            stat_density_2d(aes(fill = ..level..), geom = "polygon", h = 2, alpha = .6) +
+            theme(text = element_text(color = "white"),
+                  axis.text = element_text(color = "white"),
+                  strip.text = element_text(color = "white"),
+                  axis.title = element_text(color = "white"))
+        return(list(full = full, outline = outline, notxt = notxt))
     })
     
     # output main plot
     output$main_plot <- renderPlot({
-        plot <- gen_main_plot()
+        plot <- gen_plots()$full
         validate(need(!is_empty(plot), "Upload a file."))
         return(plot)
+    })
+    get_dims <- reactive({
+        stats <- get_stats()
+        selcond <- stats[input$stats_dt_rows_selected,]$condition
+        ncond <- ifelse(length(selcond) > 0, length(selcond), length(stats$condition))
+        width <- ifelse(ncond < 4, 250*ncond, 800)
+        height <- ifelse(ncond < 4, 270*ceiling(ncond/4), 220*ceiling(ncond/4))
+        list(w = width, h = height)
+    })
+    output$plot_ui <- renderUI({
+        dims <- get_dims()
+        plotOutput("main_plot", height = dims$h, width = dims$w)
     })
     
     # download main plot as png
     output$dl_main_plot_png <- downloadHandler(
         filename = function() {
             name <- get_name()
-            paste0(name, "_levels_",input$plot_type, "_", input$sig_style,  ".png")
+            paste0(name, "_scWB_contourplots.png")
         },
         content = function(file) {
-            plot <- gen_main_plot()
-            df <- load_data()
-            height <- ifelse(input$sig_style == "bars", 6.5, 6)
-            # width <- ifelse(input$sig_style == "bars", (ncol(df) * 0.8)+5,
-            #                 (ncol(df) * 0.8)+5)
-            ggsave(plot = plot, filename = file, 
-                   height = height, width = (ncol(df) * 0.8)+5)
+            plot <- gen_plots()$full
+            dims <- get_dims()
+            ggsave(plot = plot, filename = file, units = "mm",
+                   height = dims$h/3, width = dims$w/3)
         }
     )
     
@@ -329,17 +283,15 @@ server <- function(input, output) {
     output$dl_main_plot_ppt <- downloadHandler(
         filename = function() {
             name <- get_name()
-            paste0(name, "_levels_",input$plot_type, "_", input$sig_style, ".pptx")
+            paste0(name, "_scWB_contourplots.pptx")
         },
         content = function(file) {
-            plot <- gen_main_plot()
-            df <- load_data()
+            plots <- gen_plots()
+            dims <- get_dims()
             file_pptx <- tempfile(fileext = ".pptx")
-            height <- ifelse(input$sig_style == "bars", 6.5, 6)
-            # width <- ifelse(input$sig_style == "bars", (ncol(df) * 0.8)+5,
-            #                 (ncol(df) * 0.8)+5)
-            gen_pptx(plot, file_pptx, 
-                     height = height, width = (ncol(df) * 0.8)+5)
+            gen_pptx(plots$notxt, plots$outline, file_pptx, 
+                     height = (dims$h/3)*0.039,
+                     width = (dims$w/3)*0.039)
             file.rename(from = file_pptx, to = file)
         }
     )
